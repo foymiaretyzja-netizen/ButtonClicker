@@ -81,8 +81,8 @@
             outline: none;
             font-family: inherit;
             z-index: 5; 
-            /* The "Spring Up" - Smooth and quick return */
-            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            /* A single, balanced speed for a smooth but rapid mechanical pump */
+            transition: transform 0.06s ease-out, box-shadow 0.06s ease-out;
         }
 
         /* The "Pressed" State */
@@ -91,8 +91,12 @@
             box-shadow: 
                 0 0 0 #9e9e9e, 
                 2px 2px 5px rgba(0,0,0,0.1);
-            /* The "Press Down" - Nearly instant to prevent floating during rapid clicks */
-            transition: transform 0.02s, box-shadow 0.02s;
+        }
+        
+        /* Adds a subtle focus state so keyboard users know the button is selected */
+        #tactile-btn:focus-visible {
+            outline: 3px solid #9e9e9e;
+            outline-offset: 5px;
         }
     </style>
 </head>
@@ -114,7 +118,6 @@
         let count = 0;
 
         btn.addEventListener('click', () => {
-            // Simply update the number, no animation classes
             count++;
             counter.textContent = count;
         });
