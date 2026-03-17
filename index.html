@@ -12,11 +12,11 @@
             height: 100vh;
             display: flex;
             align-items: center;
-            justify-content: flex-start; /* Keeps the button on the left */
+            justify-content: flex-start;
             background-color: #ffffff;
-            padding-left: 10vw; /* Gives it a little breathing room from the edge */
-            font-family: 'Impact', 'Arial Black', sans-serif; /* Blocky font */
-            user-select: none; /* Prevents text highlighting when clicking fast */
+            padding-left: 10vw; 
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            user-select: none; 
         }
 
         /* Tactile Grey Button Styling */
@@ -27,37 +27,41 @@
             font-size: 4rem;
             color: #4a4a4a;
             border-radius: 12px;
-            /* Creates the 3D raised effect */
             box-shadow: 
                 0 10px 0 #9e9e9e, 
                 5px 15px 15px rgba(0,0,0,0.15); 
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 20px;
+            justify-content: center;
+            min-width: 120px; /* Keeps the button from shrinking too much on 0 */
             outline: none;
             font-family: inherit;
-            /* Smooth transition for the physical press */
             transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* The "Pressed" State */
         #tactile-btn:active {
-            /* Pushes the button down to the floor */
             transform: translateY(10px);
-            /* Flattens the 3D shadow */
             box-shadow: 
                 0 0 0 #9e9e9e, 
                 2px 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* Counter container and animation */
+        /* Counter styling with depth */
         #counter {
             display: inline-block;
-            min-width: 60px;
-            text-align: left;
+            /* Adds the requested depth to the number */
+            text-shadow: 2px 3px 4px rgba(0, 0, 0, 0.3); 
+            transition: text-shadow 0.1s ease;
         }
 
+        /* Flattens the text shadow slightly when the button is pressed for realism */
+        #tactile-btn:active #counter {
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Animation class for the rising effect */
         .rise-anim {
             animation: riseUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
@@ -77,7 +81,6 @@
 <body>
 
     <button id="tactile-btn">
-        <span>EX:</span>
         <span id="counter">0</span>
     </button>
 
@@ -87,15 +90,12 @@
         let count = 0;
 
         btn.addEventListener('click', () => {
-            // Increment the counter
             count++;
             counter.textContent = count;
 
-            // Remove and re-add the animation class to trigger the "rise" effect every click
             counter.classList.remove('rise-anim');
             
-            // Trigger a reflow in between removing and adding the class
-            // This forces the browser to restart the animation
+            // Trigger a reflow to restart the animation smoothly
             void counter.offsetWidth; 
             
             counter.classList.add('rise-anim');
