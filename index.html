@@ -16,6 +16,7 @@
             font-family: 'Impact', 'Arial Black', sans-serif;
             user-select: none;
             color: #4a4a4a;
+            overflow: hidden;
         }
 
         /* Top Bar Styling */
@@ -48,6 +49,7 @@
             display: block;
             font-size: 4rem;
             text-shadow: 2px 3px 4px rgba(0, 0, 0, 0.3);
+            transition: color 0.3s;
         }
 
         .spacer {
@@ -103,7 +105,7 @@
             padding: 40px 20px;
             box-sizing: border-box;
             background-color: #fafafa;
-            overflow-y: auto; /* Adds scroll if the store gets too tall */
+            overflow-y: auto;
         }
 
         h2 {
@@ -127,7 +129,6 @@
             z-index: 5; 
         }
 
-        /* Standard active press */
         .tactile-btn:active:not(:disabled) {
             transform: translateY(10px);
             box-shadow: 0 0 0 #9e9e9e, 2px 2px 5px rgba(0,0,0,0.1);
@@ -205,6 +206,40 @@
             padding: 10px;
             font-size: 1.1rem;
         }
+
+        /* Toast Notification System */
+        #toast-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .toast {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast.bad { background-color: #d32f2f; }
+        .toast.good { background-color: #388e3c; }
+
     </style>
 </head>
 <body>
@@ -223,6 +258,7 @@
             <div id="inventory-display">
                 <div id="clickers-owned-display">Auto Clickers: 0</div>
                 <div id="factories-owned-display">Click Factories: 0</div>
+                <div id="parks-owned-display">Amusement Parks: 0</div>
                 <div id="multiplier-display">Multiplier: x1</div>
             </div>
             <button class="tactile-btn main-btn" id="main-btn">PRESS ME</button>
@@ -256,10 +292,23 @@
                     +1 Click Factory (1k Clicks / 5s)<br>Cost: <span id="factory-cost">10,000</span>
                 </button>
             </div>
+            
+            <div class="upgrade-row">
+                <button class="tactile-btn store-btn" id="buy-factory-boost-btn" style="width: 100%;">
+                    Overclocked Gears ⚙️ (Factory x2)<br>Cost: 15,000
+                </button>
+            </div>
+
+            <div class="upgrade-row">
+                <button class="tactile-btn store-btn" id="buy-park-btn" style="width: 100%;">
+                    +1 Button Amusement Park (+25k CPS)<br>Cost: <span id="park-cost">100,000</span>
+                </button>
+            </div>
 
         </div>
-
     </div>
+
+    <div id="toast-container"></div>
 
     <script>
         // Game Variables
@@ -274,11 +323,17 @@
 
         let factories = 0;
         let factoryCost = 10000;
+        let factoryMultiplier = 1; // Used for the new Overclocked Gears upgrade
+        const factoryBoostCost = 15000;
+
+        let parks = 0;
+        let parkCost = 100000;
 
         // DOM Elements
         const mainBtn = document.getElementById('main-btn');
         const counter = document.getElementById('counter');
         const cpsDisplay = document.getElementById('cps-display');
+        const toastContainer = document.getElementById('toast-container');
         
         const clickersOwnedDisplay = document.getElementById('clickers-owned-display');
         const clickerCostDisplay = document.getElementById('clicker-cost');
@@ -286,6 +341,12 @@
         const factoriesOwnedDisplay = document.getElementById('factories-owned-display');
         const buyFactoryBtn = document.getElementById('buy-factory-btn');
         const factoryCostDisplay = document.getElementById('factory-cost');
+
+        const buyFactoryBoostBtn = document.getElementById('buy-factory-boost-btn');
+
+        const parksOwnedDisplay = document.getElementById('parks-owned-display');
+        const buyParkBtn = document.getElementById('buy-park-btn');
+        const parkCostDisplay = document.getElementById('park-cost');
 
         const multiplierDisplay = document.getElementById('multiplier-display');
         const buyRedBtn = document.getElementById('buy-red-btn');
@@ -304,8 +365,12 @@
             counter.textContent = formatNum(Math.floor(clicks));
             
             // Calculate total CPS 
-            // Factory adds 1000 every 5 seconds, which averages to 200 CPS per factory
-            const totalCPS = (autoClickers * clickerPower * globalMultiplier) + (factories * 200);
+            // Factory adds (1000 * multiplier) every 5s, meaning (200 * multiplier) CPS.
+            const clickerCPS = (autoClickers * clickerPower * globalMultiplier);
+            const factoryCPS = (factories * 200 * factoryMultiplier);
+            const parkCPS = (parks * 25000); // 25k clicks per second
+            
+            const totalCPS = clickerCPS + factoryCPS + parkCPS;
             cpsDisplay.textContent = `CPS: ${formatNum(totalCPS)}`;
             
             clickersOwnedDisplay.textContent = `Auto Clickers: ${formatNum(autoClickers)}`;
@@ -314,7 +379,34 @@
             factoriesOwnedDisplay.textContent = `Click Factories: ${formatNum(factories)}`;
             factoryCostDisplay.textContent = formatNum(factoryCost);
 
+            parksOwnedDisplay.textContent = `Amusement Parks: ${formatNum(parks)}`;
+            parkCostDisplay.textContent = formatNum(parkCost);
+
             multiplierDisplay.textContent = `Multiplier: x${globalMultiplier}`;
+        }
+
+        // Show Toast Notification
+        function showToast(message, type = "neutral") {
+            const toast = document.createElement('div');
+            toast.classList.add('toast', type);
+            toast.textContent = message;
+            
+            toastContainer.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 3.5 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Flash counter color for events
+        function flashCounter(color) {
+            counter.style.color = color;
+            setTimeout(() => counter.style.color = '#4a4a4a', 1000);
         }
 
         // 1. Main Button Click
@@ -338,12 +430,35 @@
             if (clicks >= factoryCost) {
                 clicks -= factoryCost;
                 factories++;
-                factoryCost = Math.ceil(factoryCost * 1.15); // Standard 15% scaling cost
+                factoryCost = Math.ceil(factoryCost * 1.15); 
                 updateUI();
             }
         });
 
-        // 4. Buy Red Button Upgrade
+        // 4. Buy Factory Boost (Overclocked Gears)
+        buyFactoryBoostBtn.addEventListener('click', () => {
+            if (clicks >= factoryBoostCost && factoryMultiplier === 1) {
+                clicks -= factoryBoostCost;
+                factoryMultiplier = 2; // Doubles factory output permanently
+                
+                buyFactoryBoostBtn.disabled = true;
+                buyFactoryBoostBtn.innerHTML = "GEARS OVERCLOCKED ⚙️";
+                
+                updateUI();
+            }
+        });
+
+        // 5. Buy Amusement Park
+        buyParkBtn.addEventListener('click', () => {
+            if (clicks >= parkCost) {
+                clicks -= parkCost;
+                parks++;
+                parkCost = Math.ceil(parkCost * 1.15); 
+                updateUI();
+            }
+        });
+
+        // 6. Buy Red Button Upgrade
         buyRedBtn.addEventListener('click', () => {
             if (clicks >= redButtonCost && globalMultiplier === 1) {
                 clicks -= redButtonCost;
@@ -358,12 +473,12 @@
             }
         });
 
-        // 5. Toggle Settings Panel
+        // 7. Toggle Settings Panel
         settingsBtn.addEventListener('click', () => {
             settingsPanel.classList.toggle('hidden');
         });
 
-        // 6. Handle Speed Upgrades
+        // 8. Handle Speed Upgrades
         const speedButtons = [
             document.getElementById('upg-5cps'),
             document.getElementById('upg-10cps'),
@@ -372,38 +487,4 @@
 
         speedButtons.forEach(btn => {
             btn.addEventListener('click', function() {
-                const cost = parseInt(this.getAttribute('data-cost'));
-                const newPower = parseInt(this.getAttribute('data-val'));
-
-                if (clicks >= cost) {
-                    clicks -= cost;
-                    clickerPower = newPower;
-                    this.disabled = true; 
-                    this.textContent = "PURCHASED";
-                    updateUI();
-                }
-            });
-        });
-
-        // 7. The Auto-Clicker Loop (Runs once every second)
-        setInterval(() => {
-            if (autoClickers > 0) {
-                clicks += (autoClickers * clickerPower * globalMultiplier);
-                updateUI();
-            }
-        }, 1000);
-
-        // 8. The Factory Loop (Runs once every 5 seconds)
-        setInterval(() => {
-            if (factories > 0) {
-                // Notice this explicitly ignores the globalMultiplier
-                clicks += (factories * 1000);
-                updateUI();
-            }
-        }, 5000);
-
-        // Initial UI render
-        updateUI();
-    </script>
-</body>
-</html>
+                const cost = parseInt(this.getAttribute('data
