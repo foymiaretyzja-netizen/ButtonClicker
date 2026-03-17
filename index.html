@@ -103,6 +103,7 @@
             padding: 40px 20px;
             box-sizing: border-box;
             background-color: #fafafa;
+            overflow-y: auto; /* Adds scroll if the store gets too tall */
         }
 
         h2 {
@@ -193,6 +194,7 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            margin-bottom: 15px;
         }
 
         .hidden {
@@ -220,6 +222,7 @@
         <div id="left-zone">
             <div id="inventory-display">
                 <div id="clickers-owned-display">Auto Clickers: 0</div>
+                <div id="factories-owned-display">Click Factories: 0</div>
                 <div id="multiplier-display">Multiplier: x1</div>
             </div>
             <button class="tactile-btn main-btn" id="main-btn">PRESS ME</button>
@@ -235,18 +238,25 @@
                 <button class="tactile-btn icon-btn" id="settings-btn">⚙</button>
             </div>
 
-            <div class="upgrade-row">
-                <button class="tactile-btn store-btn" id="buy-red-btn" style="width: 100%;">
-                    Red Button Upgrade (Global x2)<br>Cost: 5,000
-                </button>
-            </div>
-
             <div id="settings-panel" class="hidden">
                 <h3 style="margin: 0 0 10px 0; font-size: 1.2rem; text-align: center;">UPGRADE CLICKER SPEED</h3>
                 <button class="tactile-btn speed-btn" id="upg-5cps" data-cost="500" data-val="5">5 CPS (Cost: 500)</button>
                 <button class="tactile-btn speed-btn" id="upg-10cps" data-cost="2000" data-val="10">10 CPS (Cost: 2,000)</button>
                 <button class="tactile-btn speed-btn" id="upg-100cps" data-cost="10000" data-val="100">100 CPS (Cost: 10,000)</button>
             </div>
+
+            <div class="upgrade-row">
+                <button class="tactile-btn store-btn" id="buy-red-btn" style="width: 100%;">
+                    Red Button Upgrade (Global x2)<br>Cost: 5,000
+                </button>
+            </div>
+
+            <div class="upgrade-row">
+                <button class="tactile-btn store-btn" id="buy-factory-btn" style="width: 100%;">
+                    +1 Click Factory (1k Clicks / 5s)<br>Cost: <span id="factory-cost">10,000</span>
+                </button>
+            </div>
+
         </div>
 
     </div>
@@ -259,16 +269,24 @@
         let clickerCost = 100;
         let clickerPower = 1; 
 
-        let globalMultiplier = 1; // Starts at x1
+        let globalMultiplier = 1; 
         const redButtonCost = 5000;
+
+        let factories = 0;
+        let factoryCost = 10000;
 
         // DOM Elements
         const mainBtn = document.getElementById('main-btn');
         const counter = document.getElementById('counter');
         const cpsDisplay = document.getElementById('cps-display');
+        
         const clickersOwnedDisplay = document.getElementById('clickers-owned-display');
         const clickerCostDisplay = document.getElementById('clicker-cost');
         
+        const factoriesOwnedDisplay = document.getElementById('factories-owned-display');
+        const buyFactoryBtn = document.getElementById('buy-factory-btn');
+        const factoryCostDisplay = document.getElementById('factory-cost');
+
         const multiplierDisplay = document.getElementById('multiplier-display');
         const buyRedBtn = document.getElementById('buy-red-btn');
 
@@ -285,13 +303,17 @@
         function updateUI() {
             counter.textContent = formatNum(Math.floor(clicks));
             
-            // Calculate total CPS taking the global multiplier into account
-            const totalCPS = (autoClickers * clickerPower) * globalMultiplier;
+            // Calculate total CPS 
+            // Factory adds 1000 every 5 seconds, which averages to 200 CPS per factory
+            const totalCPS = (autoClickers * clickerPower * globalMultiplier) + (factories * 200);
             cpsDisplay.textContent = `CPS: ${formatNum(totalCPS)}`;
             
             clickersOwnedDisplay.textContent = `Auto Clickers: ${formatNum(autoClickers)}`;
             clickerCostDisplay.textContent = formatNum(clickerCost);
             
+            factoriesOwnedDisplay.textContent = `Click Factories: ${formatNum(factories)}`;
+            factoryCostDisplay.textContent = formatNum(factoryCost);
+
             multiplierDisplay.textContent = `Multiplier: x${globalMultiplier}`;
         }
 
@@ -311,16 +333,24 @@
             }
         });
 
-        // 3. Buy Red Button Upgrade
+        // 3. Buy Click Factory
+        buyFactoryBtn.addEventListener('click', () => {
+            if (clicks >= factoryCost) {
+                clicks -= factoryCost;
+                factories++;
+                factoryCost = Math.ceil(factoryCost * 1.15); // Standard 15% scaling cost
+                updateUI();
+            }
+        });
+
+        // 4. Buy Red Button Upgrade
         buyRedBtn.addEventListener('click', () => {
             if (clicks >= redButtonCost && globalMultiplier === 1) {
                 clicks -= redButtonCost;
-                globalMultiplier = 2; // Sets the global math to double
+                globalMultiplier = 2; 
                 
-                // Add the CSS class to turn the button red
                 mainBtn.classList.add('red-shiny');
                 
-                // Lock the upgrade button permanently
                 buyRedBtn.disabled = true;
                 buyRedBtn.innerHTML = "RED BUTTON INSTALLED";
                 
@@ -328,12 +358,12 @@
             }
         });
 
-        // 4. Toggle Settings Panel
+        // 5. Toggle Settings Panel
         settingsBtn.addEventListener('click', () => {
             settingsPanel.classList.toggle('hidden');
         });
 
-        // 5. Handle Speed Upgrades
+        // 6. Handle Speed Upgrades
         const speedButtons = [
             document.getElementById('upg-5cps'),
             document.getElementById('upg-10cps'),
@@ -355,13 +385,22 @@
             });
         });
 
-        // 6. The Auto-Clicker Loop (Runs once every second)
+        // 7. The Auto-Clicker Loop (Runs once every second)
         setInterval(() => {
             if (autoClickers > 0) {
                 clicks += (autoClickers * clickerPower * globalMultiplier);
                 updateUI();
             }
         }, 1000);
+
+        // 8. The Factory Loop (Runs once every 5 seconds)
+        setInterval(() => {
+            if (factories > 0) {
+                // Notice this explicitly ignores the globalMultiplier
+                clicks += (factories * 1000);
+                updateUI();
+            }
+        }, 5000);
 
         // Initial UI render
         updateUI();
