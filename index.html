@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tactile Button & Shake Counter</title>
+    <title>Tactile Button & Top Bar</title>
     <style>
         /* Base Setup */
         body {
@@ -30,20 +30,18 @@
             z-index: 10;
         }
 
-        /* Counter Wrapper - Removed strict height and overflow to prevent ANY clipping */
+        /* Counter Wrapper */
         #counter-wrapper {
             display: flex;
             align-items: center; 
         }
 
-        /* Counter styling */
+        /* Counter styling - No animations */
         #counter {
             display: block;
             font-size: 4rem;
             color: #4a4a4a;
             text-shadow: 2px 3px 4px rgba(0, 0, 0, 0.3);
-            /* Set a neutral starting position for the shake */
-            transform: translate(0, 0) rotate(0deg);
         }
 
         /* Main Canvas Area */
@@ -82,8 +80,9 @@
             cursor: pointer;
             outline: none;
             font-family: inherit;
-            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
             z-index: 5; 
+            /* The "Spring Up" - Smooth and quick return */
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* The "Pressed" State */
@@ -92,19 +91,8 @@
             box-shadow: 
                 0 0 0 #9e9e9e, 
                 2px 2px 5px rgba(0,0,0,0.1);
-        }
-
-        /* Shake Animation - A fast, mechanical jolt */
-        .shake-anim {
-            animation: mechanicalShake 0.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-        }
-
-        @keyframes mechanicalShake {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(-3px, 2px) rotate(-2deg); }
-            50% { transform: translate(3px, -2px) rotate(2deg); }
-            75% { transform: translate(-3px, -2px) rotate(-1deg); }
-            100% { transform: translate(0, 0) rotate(0deg); }
+            /* The "Press Down" - Nearly instant to prevent floating during rapid clicks */
+            transition: transform 0.02s, box-shadow 0.02s;
         }
     </style>
 </head>
@@ -126,16 +114,9 @@
         let count = 0;
 
         btn.addEventListener('click', () => {
+            // Simply update the number, no animation classes
             count++;
             counter.textContent = count;
-
-            // Swapped the class to trigger the new shake animation
-            counter.classList.remove('shake-anim');
-            
-            // Trigger a reflow to restart the animation smoothly
-            void counter.offsetWidth; 
-            
-            counter.classList.add('shake-anim');
         });
     </script>
 </body>
