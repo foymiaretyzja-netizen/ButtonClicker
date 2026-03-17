@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tactile Button & Top Bar Counter</title>
+    <title>Tactile Button & Top Bar</title>
     <style>
         /* Base Setup */
         body {
@@ -11,45 +11,63 @@
             padding: 0;
             height: 100vh;
             display: flex;
-            flex-direction: column; /* Stacks the top bar and the main canvas */
+            flex-direction: column;
             background-color: #ffffff;
             font-family: 'Impact', 'Arial Black', sans-serif;
             user-select: none;
         }
 
-        /* Top Bar Styling */
+        /* Top Bar Styling - Now Smaller */
         #top-bar {
             width: 100%;
-            height: 100px;
+            height: 70px; /* Reduced from 100px */
             background-color: #f8f8f8;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             border-bottom: 2px solid #e0e0e0;
             display: flex;
             align-items: center;
-            justify-content: center; /* Centers the counter in the bar */
+            justify-content: center;
+            z-index: 10; /* Ensures it stays above the canvas */
         }
 
-        /* Counter Wrapper (clips the number so it rises cleanly from the bottom line) */
+        /* Counter Wrapper acts as the physical 'floor' mask */
         #counter-wrapper {
             overflow: hidden;
-            padding: 10px;
+            height: 55px; /* Tightly wraps the text */
+            display: flex;
+            align-items: flex-end; 
         }
 
-        /* Counter styling with depth */
+        /* Counter styling */
         #counter {
-            display: inline-block;
-            font-size: 4.5rem;
+            display: block;
+            font-size: 4rem;
+            line-height: 0.9; /* Keeps the text snug inside the wrapper */
             color: #4a4a4a;
             text-shadow: 2px 3px 4px rgba(0, 0, 0, 0.3);
+            transform: translateY(0);
         }
 
         /* Main Canvas Area */
         #canvas {
-            flex-grow: 1; /* Takes up the rest of the screen */
+            position: relative; /* Allows the divider to be placed inside */
+            flex-grow: 1;
             display: flex;
             align-items: center;
-            justify-content: flex-start; /* Keeps button on the left */
+            justify-content: flex-start;
             padding-left: 10vw;
+        }
+
+        /* Center Divider - Only lives inside the canvas */
+        #canvas::after {
+            content: '';
+            position: absolute;
+            left: 50%; /* Places it exactly in the middle */
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #f0f0f0; /* Subtle grey vertical line */
+            border-radius: 2px;
         }
 
         /* Tactile Grey Button Styling */
@@ -66,7 +84,9 @@
             cursor: pointer;
             outline: none;
             font-family: inherit;
-            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Switched to 'ease-out' and lengthened slightly for a smoother press */
+            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+            z-index: 5; 
         }
 
         /* The "Pressed" State */
@@ -77,19 +97,17 @@
                 2px 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* Animation class for the rising effect */
+        /* Rise Animation - Purely physical, no fading */
         .rise-anim {
-            animation: riseUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: riseUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         @keyframes riseUp {
             0% { 
-                transform: translateY(60px); 
-                opacity: 0; 
+                transform: translateY(100%); /* Starts entirely hidden below the wrapper floor */
             }
             100% { 
-                transform: translateY(0); 
-                opacity: 1; 
+                transform: translateY(0); /* Locks perfectly into place */
             }
         }
     </style>
