@@ -49,7 +49,7 @@
             display: block;
             font-size: 4rem;
             text-shadow: 2px 3px 4px rgba(0, 0, 0, 0.3);
-            transition: color 0.3s;
+            transition: color 0.3s ease;
         }
 
         .spacer {
@@ -184,8 +184,8 @@
             font-size: 1.8rem;
         }
 
-        /* Settings Panel */
-        #settings-panel {
+        /* Settings Panels */
+        .sub-panel {
             width: 80%;
             max-width: 400px;
             background: #eaeaea;
@@ -207,7 +207,7 @@
             font-size: 1.1rem;
         }
 
-        /* Toast Notification System */
+        /* Toast Notifications */
         #toast-container {
             position: fixed;
             bottom: 30px;
@@ -221,24 +221,24 @@
         }
 
         .toast {
-            background-color: #333;
-            color: #fff;
-            padding: 15px 25px;
+            padding: 15px 30px;
             border-radius: 8px;
+            color: white;
             font-size: 1.2rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             opacity: 0;
             transform: translateY(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            transition: opacity 0.3s, transform 0.3s;
         }
 
         .toast.show {
             opacity: 1;
             transform: translateY(0);
         }
-        
-        .toast.bad { background-color: #d32f2f; }
-        .toast.good { background-color: #388e3c; }
+
+        .toast.good { background: linear-gradient(145deg, #4caf50, #2e7d32); }
+        .toast.bad { background: linear-gradient(145deg, #f44336, #c62828); }
 
     </style>
 </head>
@@ -258,7 +258,7 @@
             <div id="inventory-display">
                 <div id="clickers-owned-display">Auto Clickers: 0</div>
                 <div id="factories-owned-display">Click Factories: 0</div>
-                <div id="parks-owned-display">Amusement Parks: 0</div>
+                <div id="parks-owned-display">Theme Parks: 0</div>
                 <div id="multiplier-display">Multiplier: x1</div>
             </div>
             <button class="tactile-btn main-btn" id="main-btn">PRESS ME</button>
@@ -274,8 +274,8 @@
                 <button class="tactile-btn icon-btn" id="settings-btn">⚙</button>
             </div>
 
-            <div id="settings-panel" class="hidden">
-                <h3 style="margin: 0 0 10px 0; font-size: 1.2rem; text-align: center;">UPGRADE CLICKER SPEED</h3>
+            <div id="settings-panel" class="sub-panel hidden">
+                <h3 style="margin: 0 0 10px 0; font-size: 1.2rem; text-align: center;">CLICKER UPGRADES</h3>
                 <button class="tactile-btn speed-btn" id="upg-5cps" data-cost="500" data-val="5">5 CPS (Cost: 500)</button>
                 <button class="tactile-btn speed-btn" id="upg-10cps" data-cost="2000" data-val="10">10 CPS (Cost: 2,000)</button>
                 <button class="tactile-btn speed-btn" id="upg-100cps" data-cost="10000" data-val="100">100 CPS (Cost: 10,000)</button>
@@ -288,20 +288,20 @@
             </div>
 
             <div class="upgrade-row">
-                <button class="tactile-btn store-btn" id="buy-factory-btn" style="width: 100%;">
-                    +1 Click Factory (1k Clicks / 5s)<br>Cost: <span id="factory-cost">10,000</span>
+                <button class="tactile-btn store-btn" id="buy-factory-btn">
+                    +1 Click Factory<br>Cost: <span id="factory-cost">10,000</span>
                 </button>
+                <button class="tactile-btn icon-btn" id="factory-settings-btn">⚙</button>
             </div>
-            
-            <div class="upgrade-row">
-                <button class="tactile-btn store-btn" id="buy-factory-boost-btn" style="width: 100%;">
-                    Overclocked Gears ⚙️ (Factory x2)<br>Cost: 15,000
-                </button>
+
+            <div id="factory-settings-panel" class="sub-panel hidden">
+                <h3 style="margin: 0 0 10px 0; font-size: 1.2rem; text-align: center;">FACTORY UPGRADES</h3>
+                <button class="tactile-btn speed-btn" id="upg-drones">Automated Drones (2x Output)<br>Cost: 15,000</button>
             </div>
 
             <div class="upgrade-row">
                 <button class="tactile-btn store-btn" id="buy-park-btn" style="width: 100%;">
-                    +1 Button Amusement Park (+25k CPS)<br>Cost: <span id="park-cost">100,000</span>
+                    +1 Theme Park (25k Clicks / 10s)<br>Cost: <span id="park-cost">100,000</span>
                 </button>
             </div>
 
@@ -311,7 +311,7 @@
     <div id="toast-container"></div>
 
     <script>
-        // Game Variables
+        // --- Economy Variables ---
         let clicks = 0;
         
         let autoClickers = 0;
@@ -323,17 +323,15 @@
 
         let factories = 0;
         let factoryCost = 10000;
-        let factoryMultiplier = 1; // Used for the new Overclocked Gears upgrade
-        const factoryBoostCost = 15000;
+        let factoryMultiplier = 1; // Drone upgrade boosts this
 
         let parks = 0;
         let parkCost = 100000;
 
-        // DOM Elements
+        // --- DOM Elements ---
         const mainBtn = document.getElementById('main-btn');
         const counter = document.getElementById('counter');
         const cpsDisplay = document.getElementById('cps-display');
-        const toastContainer = document.getElementById('toast-container');
         
         const clickersOwnedDisplay = document.getElementById('clickers-owned-display');
         const clickerCostDisplay = document.getElementById('clicker-cost');
@@ -341,8 +339,6 @@
         const factoriesOwnedDisplay = document.getElementById('factories-owned-display');
         const buyFactoryBtn = document.getElementById('buy-factory-btn');
         const factoryCostDisplay = document.getElementById('factory-cost');
-
-        const buyFactoryBoostBtn = document.getElementById('buy-factory-boost-btn');
 
         const parksOwnedDisplay = document.getElementById('parks-owned-display');
         const buyParkBtn = document.getElementById('buy-park-btn');
@@ -355,23 +351,42 @@
         const settingsBtn = document.getElementById('settings-btn');
         const settingsPanel = document.getElementById('settings-panel');
 
-        // Format numbers with commas
+        const factorySettingsBtn = document.getElementById('factory-settings-btn');
+        const factorySettingsPanel = document.getElementById('factory-settings-panel');
+        const buyDronesBtn = document.getElementById('upg-drones');
+
+        const toastContainer = document.getElementById('toast-container');
+
+        // --- Utilities ---
         function formatNum(num) {
             return num.toLocaleString();
         }
 
-        // Master UI Updater
+        function showToast(message, isBad = false) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${isBad ? 'bad' : 'good'}`;
+            toast.innerText = message;
+            toastContainer.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
         function updateUI() {
             counter.textContent = formatNum(Math.floor(clicks));
             
-            // Calculate total CPS 
-            // Factory adds (1000 * multiplier) every 5s, meaning (200 * multiplier) CPS.
-            const clickerCPS = (autoClickers * clickerPower * globalMultiplier);
-            const factoryCPS = (factories * 200 * factoryMultiplier);
-            const parkCPS = (parks * 25000); // 25k clicks per second
+            // Calculate CPS: Auto Clickers (1s) + Factories (averages 200/s base) + Parks (averages 2500/s)
+            const clickerCPS = autoClickers * clickerPower * globalMultiplier;
+            const factoryCPS = factories * ((1000 * factoryMultiplier) / 5);
+            const parkCPS = parks * (25000 / 10);
             
-            const totalCPS = clickerCPS + factoryCPS + parkCPS;
-            cpsDisplay.textContent = `CPS: ${formatNum(totalCPS)}`;
+            cpsDisplay.textContent = `CPS: ${formatNum(clickerCPS + factoryCPS + parkCPS)}`;
             
             clickersOwnedDisplay.textContent = `Auto Clickers: ${formatNum(autoClickers)}`;
             clickerCostDisplay.textContent = formatNum(clickerCost);
@@ -379,43 +394,18 @@
             factoriesOwnedDisplay.textContent = `Click Factories: ${formatNum(factories)}`;
             factoryCostDisplay.textContent = formatNum(factoryCost);
 
-            parksOwnedDisplay.textContent = `Amusement Parks: ${formatNum(parks)}`;
+            parksOwnedDisplay.textContent = `Theme Parks: ${formatNum(parks)}`;
             parkCostDisplay.textContent = formatNum(parkCost);
 
             multiplierDisplay.textContent = `Multiplier: x${globalMultiplier}`;
         }
 
-        // Show Toast Notification
-        function showToast(message, type = "neutral") {
-            const toast = document.createElement('div');
-            toast.classList.add('toast', type);
-            toast.textContent = message;
-            
-            toastContainer.appendChild(toast);
-            
-            // Trigger animation
-            setTimeout(() => toast.classList.add('show'), 10);
-            
-            // Remove after 3.5 seconds
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
-        }
-
-        // Flash counter color for events
-        function flashCounter(color) {
-            counter.style.color = color;
-            setTimeout(() => counter.style.color = '#4a4a4a', 1000);
-        }
-
-        // 1. Main Button Click
+        // --- Core Interactions ---
         mainBtn.addEventListener('click', () => {
             clicks += (1 * globalMultiplier);
             updateUI();
         });
 
-        // 2. Buy Auto Clicker
         buyClickerBtn.addEventListener('click', () => {
             if (clicks >= clickerCost) {
                 clicks -= clickerCost;
@@ -425,7 +415,6 @@
             }
         });
 
-        // 3. Buy Click Factory
         buyFactoryBtn.addEventListener('click', () => {
             if (clicks >= factoryCost) {
                 clicks -= factoryCost;
@@ -435,20 +424,6 @@
             }
         });
 
-        // 4. Buy Factory Boost (Overclocked Gears)
-        buyFactoryBoostBtn.addEventListener('click', () => {
-            if (clicks >= factoryBoostCost && factoryMultiplier === 1) {
-                clicks -= factoryBoostCost;
-                factoryMultiplier = 2; // Doubles factory output permanently
-                
-                buyFactoryBoostBtn.disabled = true;
-                buyFactoryBoostBtn.innerHTML = "GEARS OVERCLOCKED ⚙️";
-                
-                updateUI();
-            }
-        });
-
-        // 5. Buy Amusement Park
         buyParkBtn.addEventListener('click', () => {
             if (clicks >= parkCost) {
                 clicks -= parkCost;
@@ -458,33 +433,87 @@
             }
         });
 
-        // 6. Buy Red Button Upgrade
         buyRedBtn.addEventListener('click', () => {
             if (clicks >= redButtonCost && globalMultiplier === 1) {
                 clicks -= redButtonCost;
                 globalMultiplier = 2; 
-                
                 mainBtn.classList.add('red-shiny');
-                
                 buyRedBtn.disabled = true;
                 buyRedBtn.innerHTML = "RED BUTTON INSTALLED";
-                
                 updateUI();
             }
         });
 
-        // 7. Toggle Settings Panel
-        settingsBtn.addEventListener('click', () => {
-            settingsPanel.classList.toggle('hidden');
+        // --- Settings Panels & Sub-Upgrades ---
+        settingsBtn.addEventListener('click', () => settingsPanel.classList.toggle('hidden'));
+        factorySettingsBtn.addEventListener('click', () => factorySettingsPanel.classList.toggle('hidden'));
+
+        document.querySelectorAll('.speed-btn[data-cost]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const cost = parseInt(this.getAttribute('data-cost'));
+                const newPower = parseInt(this.getAttribute('data-val'));
+                if (clicks >= cost) {
+                    clicks -= cost;
+                    clickerPower = newPower;
+                    this.disabled = true; 
+                    this.textContent = "PURCHASED";
+                    updateUI();
+                }
+            });
         });
 
-        // 8. Handle Speed Upgrades
-        const speedButtons = [
-            document.getElementById('upg-5cps'),
-            document.getElementById('upg-10cps'),
-            document.getElementById('upg-100cps')
-        ];
+        buyDronesBtn.addEventListener('click', function() {
+            if (clicks >= 15000 && factoryMultiplier === 1) {
+                clicks -= 15000;
+                factoryMultiplier = 2;
+                this.disabled = true;
+                this.textContent = "DRONES INSTALLED (2x)";
+                updateUI();
+            }
+        });
 
-        speedButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const cost = parseInt(this.getAttribute('data
+        // --- Game Loops ---
+        // 1. Auto Clickers (Every 1s)
+        setInterval(() => {
+            if (autoClickers > 0) clicks += (autoClickers * clickerPower * globalMultiplier);
+            updateUI();
+        }, 1000);
+
+        // 2. Factories (Every 5s)
+        setInterval(() => {
+            if (factories > 0) clicks += (factories * 1000 * factoryMultiplier);
+            updateUI();
+        }, 5000);
+
+        // 3. Theme Parks (Every 10s)
+        setInterval(() => {
+            if (parks > 0) clicks += (parks * 25000);
+            updateUI();
+        }, 10000);
+
+        // 4. Random Events (Every 45s)
+        setInterval(() => {
+            if (clicks < 100) return; // Need some clicks for events to matter
+            
+            const isGood = Math.random() > 0.5;
+            
+            if (isGood) {
+                clicks *= 2;
+                showToast("Lucky break! Clicks doubled!", false);
+            } else {
+                const lost = Math.floor(clicks * 0.25);
+                clicks -= lost;
+                showToast(`Broken button! You lose 25% (-${formatNum(lost)} clicks)!`, true);
+                
+                // Flash the counter red briefly for effect
+                counter.style.color = "#cc0000";
+                setTimeout(() => counter.style.color = "#4a4a4a", 500);
+            }
+            updateUI();
+        }, 45000);
+
+        // Initial Boot
+        updateUI();
+    </script>
+</body>
+</html>
