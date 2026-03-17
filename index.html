@@ -16,6 +16,7 @@
             font-family: 'Impact', 'Arial Black', sans-serif;
             user-select: none;
             color: #4a4a4a;
+            overflow: hidden; /* Prevents scrollbars if blocks spawn high */
         }
 
         /* Top Bar Styling */
@@ -27,15 +28,15 @@
             border-bottom: 2px solid #e0e0e0;
             display: flex;
             align-items: center;
-            justify-content: space-between; /* Spreads out CPS, Counter, and Spacer */
+            justify-content: space-between;
             padding: 0 30px;
             box-sizing: border-box;
-            z-index: 10;
+            z-index: 20;
         }
 
         #cps-display {
             font-size: 1.5rem;
-            width: 150px; /* Locks width to keep counter centered */
+            width: 150px;
             text-align: left;
         }
 
@@ -51,7 +52,7 @@
         }
 
         .spacer {
-            width: 150px; /* Balances the CPS display to keep counter dead center */
+            width: 150px;
         }
 
         /* Main Canvas Area */
@@ -82,11 +83,15 @@
             justify-content: center;
         }
 
-        #clickers-owned-display {
+        /* Stats Display for Items Owned */
+        #inventory-display {
             position: absolute;
             top: 20px;
             left: 30px;
-            font-size: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 1.2rem;
             color: #888;
         }
 
@@ -98,7 +103,7 @@
             align-items: center;
             padding: 40px 20px;
             box-sizing: border-box;
-            background-color: #fafafa; /* Very slight tint to distinguish the store */
+            background-color: #fafafa;
         }
 
         h2 {
@@ -108,7 +113,7 @@
             text-shadow: 1px 2px 2px rgba(0,0,0,0.1);
         }
 
-        /* Tactile Button Base Class (Applied to all buttons now) */
+        /* Tactile Button Base Class */
         .tactile-btn {
             background: linear-gradient(145deg, #f3f3f3, #cccccc);
             border: none;
@@ -122,9 +127,16 @@
             z-index: 5; 
         }
 
+        /* Standard active press */
         .tactile-btn:active:not(:disabled) {
             transform: translateY(10px);
             box-shadow: 0 0 0 #9e9e9e, 2px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Simulated press for when the Smasher block hits */
+        .simulated-active {
+            transform: translateY(10px) !important;
+            box-shadow: 0 0 0 #9e9e9e, 2px 2px 5px rgba(0,0,0,0.1) !important;
         }
         
         .tactile-btn:focus-visible {
@@ -148,7 +160,7 @@
         .upgrade-row {
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             width: 80%;
             max-width: 400px;
         }
@@ -157,6 +169,7 @@
             flex-grow: 1;
             padding: 15px;
             font-size: 1.2rem;
+            line-height: 1.4;
         }
 
         .icon-btn {
@@ -164,7 +177,7 @@
             font-size: 1.8rem;
         }
 
-        /* Settings / Upgrades Panel */
+        /* Settings Panel */
         #settings-panel {
             width: 80%;
             max-width: 400px;
@@ -185,6 +198,34 @@
             padding: 10px;
             font-size: 1.1rem;
         }
+
+        /* Smasher Block Animations */
+        .smasher-block {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #4a4a4a;
+            border-radius: 6px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 5px 10px rgba(0,0,0,0.3);
+            z-index: 15;
+            /* Drops from the top edge of the screen down to the button */
+            animation: dropDown 0.35s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+
+        .smasher-shatter {
+            /* Breaks apart visually */
+            animation: shatterBlock 0.5s ease-out forwards;
+        }
+
+        @keyframes dropDown {
+            0% { top: -50px; transform: scale(1) rotate(0deg); }
+            100% { top: calc(50% - 60px); transform: scale(1) rotate(0deg); }
+        }
+
+        @keyframes shatterBlock {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            100% { transform: scale(1.5) translateY(30px); opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -200,7 +241,10 @@
     <div id="canvas">
         
         <div id="left-zone">
-            <div id="clickers-owned-display">Auto Clickers: 0</div>
+            <div id="inventory-display">
+                <div id="clickers-owned-display">Auto Clickers: 0</div>
+                <div id="smashers-owned-display">Button Smashers: 0 / 5</div>
+            </div>
             <button class="tactile-btn main-btn" id="main-btn">PRESS ME</button>
         </div>
 
@@ -212,6 +256,12 @@
                     +1 Auto Clicker<br>Cost: <span id="clicker-cost">100</span>
                 </button>
                 <button class="tactile-btn icon-btn" id="settings-btn">⚙</button>
+            </div>
+
+            <div class="upgrade-row">
+                <button class="tactile-btn store-btn" id="buy-smasher-btn" style="width: 100%;">
+                    +1 Button Smasher (Max 5)<br>Cost: <span id="smasher-cost">1,000</span>
+                </button>
             </div>
 
             <div id="settings-panel" class="hidden">
@@ -227,19 +277,30 @@
     <script>
         // Game Variables
         let clicks = 0;
+        
         let autoClickers = 0;
         let clickerCost = 100;
-        let clickerPower = 1; // Base CPS per clicker
+        let clickerPower = 1; 
+
+        let smashers = 0;
+        let smasherCost = 1000;
+        const MAX_SMASHERS = 5;
 
         // DOM Elements
         const mainBtn = document.getElementById('main-btn');
         const counter = document.getElementById('counter');
         const cpsDisplay = document.getElementById('cps-display');
         const clickersOwnedDisplay = document.getElementById('clickers-owned-display');
-        const buyClickerBtn = document.getElementById('buy-clicker-btn');
         const clickerCostDisplay = document.getElementById('clicker-cost');
+        
+        const smashersOwnedDisplay = document.getElementById('smashers-owned-display');
+        const buySmasherBtn = document.getElementById('buy-smasher-btn');
+        const smasherCostDisplay = document.getElementById('smasher-cost');
+
+        const buyClickerBtn = document.getElementById('buy-clicker-btn');
         const settingsBtn = document.getElementById('settings-btn');
         const settingsPanel = document.getElementById('settings-panel');
+        const leftZone = document.getElementById('left-zone');
 
         // Format numbers with commas
         function formatNum(num) {
@@ -249,9 +310,22 @@
         // Master UI Updater
         function updateUI() {
             counter.textContent = formatNum(Math.floor(clicks));
-            cpsDisplay.textContent = `CPS: ${formatNum(autoClickers * clickerPower)}`;
+            
+            // Calculate total CPS: standard auto clickers + average from smashers (100 clicks / 10s = 10 CPS each)
+            const totalCPS = (autoClickers * clickerPower) + (smashers * 10);
+            cpsDisplay.textContent = `CPS: ${formatNum(totalCPS)}`;
+            
             clickersOwnedDisplay.textContent = `Auto Clickers: ${formatNum(autoClickers)}`;
             clickerCostDisplay.textContent = formatNum(clickerCost);
+
+            smashersOwnedDisplay.textContent = `Button Smashers: ${smashers} / 5`;
+            smasherCostDisplay.textContent = formatNum(smasherCost);
+
+            // Lock Smasher button if maxed
+            if (smashers >= MAX_SMASHERS) {
+                buySmasherBtn.disabled = true;
+                buySmasherBtn.innerHTML = "MAX SMASHERS REACHED";
+            }
         }
 
         // 1. Main Button Click
@@ -265,18 +339,27 @@
             if (clicks >= clickerCost) {
                 clicks -= clickerCost;
                 autoClickers++;
-                // Increase cost by 15% each purchase (standard incremental math)
                 clickerCost = Math.ceil(clickerCost * 1.15); 
                 updateUI();
             }
         });
 
-        // 3. Toggle Settings Panel
+        // 3. Buy Button Smasher
+        buySmasherBtn.addEventListener('click', () => {
+            if (clicks >= smasherCost && smashers < MAX_SMASHERS) {
+                clicks -= smasherCost;
+                smashers++;
+                smasherCost = Math.ceil(smasherCost * 1.5); // Smashers get 50% more expensive
+                updateUI();
+            }
+        });
+
+        // 4. Toggle Settings Panel
         settingsBtn.addEventListener('click', () => {
             settingsPanel.classList.toggle('hidden');
         });
 
-        // 4. Handle Speed Upgrades
+        // 5. Handle Speed Upgrades
         const speedButtons = [
             document.getElementById('upg-5cps'),
             document.getElementById('upg-10cps'),
@@ -291,20 +374,62 @@
                 if (clicks >= cost) {
                     clicks -= cost;
                     clickerPower = newPower;
-                    this.disabled = true; // Button locks down permanently once bought
+                    this.disabled = true; 
                     this.textContent = "PURCHASED";
                     updateUI();
                 }
             });
         });
 
-        // 5. The Auto-Clicker Loop (Runs once every second)
+        // 6. The Auto-Clicker Loop (Runs once every second)
         setInterval(() => {
             if (autoClickers > 0) {
                 clicks += (autoClickers * clickerPower);
                 updateUI();
             }
         }, 1000);
+
+        // 7. The Smasher Loop (Runs once every 10 seconds)
+        setInterval(() => {
+            if (smashers > 0) {
+                for (let i = 0; i < smashers; i++) {
+                    // Stagger the block drops so they don't all hit at the exact same millisecond
+                    setTimeout(() => triggerSmasherBlock(), i * 300);
+                }
+            }
+        }, 10000);
+
+        function triggerSmasherBlock() {
+            // Create the physical block
+            const block = document.createElement('div');
+            block.classList.add('smasher-block');
+            
+            // Randomize X position slightly so multiple blocks don't stack perfectly
+            const randomOffsetX = (Math.random() - 0.5) * 80;
+            block.style.left = `calc(50% + ${randomOffsetX}px)`;
+            
+            leftZone.appendChild(block);
+
+            // Wait for the block to visually "hit" the button (0.35s animation)
+            setTimeout(() => {
+                // Flash the button to its "pressed" state
+                mainBtn.classList.add('simulated-active');
+                
+                // Add the big click burst
+                clicks += 100;
+                updateUI();
+
+                // Unpress the button 0.1s later
+                setTimeout(() => mainBtn.classList.remove('simulated-active'), 100);
+
+                // Start the shatter animation
+                block.classList.add('smasher-shatter');
+
+                // Completely remove the block element from the DOM after it fades to prevent lag
+                setTimeout(() => block.remove(), 500);
+
+            }, 350); 
+        }
 
         // Initial UI render
         updateUI();
